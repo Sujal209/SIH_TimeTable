@@ -218,20 +218,44 @@ export class TimetableService {
 
   // Create a new timetable assignment
   static async create(assignmentData: CreateTimetableAssignmentData): Promise<TimetableAssignment> {
-    const { data, error } = await supabase
-      .from('timetable_assignments')
-      .insert({
-        ...assignmentData,
-        week_number: assignmentData.week_number || 1,
-      })
-      .select('*')
-      .single();
+    console.log('Creating timetable assignment with data:', assignmentData);
+    
+    try {
+      const { data, error } = await supabase
+        .from('timetable_assignments')
+        .insert({
+          ...assignmentData,
+          week_number: assignmentData.week_number || 1,
+        })
+        .select('*')
+        .single();
 
-    if (error) {
-      throw new Error(`Failed to create timetable assignment: ${error.message}`);
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        // Handle specific error codes
+        if (error.code === '42501') {
+          throw new Error('Permission denied. Please check your authentication and try again.');
+        } else if (error.code === 'PGRST301') {
+          throw new Error('Row level security policy violation. Please contact your administrator.');
+        } else if (error.code === '23505') {
+          throw new Error('This time slot is already occupied by another assignment.');
+        } else {
+          throw new Error(`Failed to create timetable assignment: ${error.message}`);
+        }
+      }
+
+      console.log('Timetable assignment created successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Error in TimetableService.create:', error);
+      throw error;
     }
-
-    return data;
   }
 
   // Update a timetable assignment
